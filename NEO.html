@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>N.E.O Chat</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.0/marked.min.js"></script>
+    <style>
+        :root {
+            --cor-fundo: #1a1a2e;
+            --cor-fundo-chat: #2e2e4e;
+            --cor-fundo-input: #3a3a5e;
+            --cor-texto: #e0e0e0;
+            --cor-bolha-usuario: #4CAF50;
+            --cor-bolha-bot: #6A1B9A;
+            --raio-borda: 15px;
+            --fonte-principal: 'Roboto', sans-serif;
+            --cor-separador: #444;
+            --cor-borda-tabela: #5a5a7e;
+        }
+
+        body {
+            font-family: var(--fonte-principal);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--cor-fundo) 0%, #16213e 100%);
+            color: var(--cor-texto);
+            overflow: hidden;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 500px;
+            height: 100vh;
+            background-color: var(--cor-fundo-chat);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: fadeIn 0.5s ease-out;
+            position: relative;
+        }
+        @media (min-width: 601px) {
+            .chat-container {
+                height: 90vh;
+                border-radius: var(--raio-borda);
+            }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .chat-header {
+            background-color: var(--cor-fundo-input);
+            padding: 15px;
+            border-bottom: 1px solid #444;
+            text-align: center;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+        @media (min-width: 601px) {
+            .chat-header {
+                border-top-left-radius: var(--raio-borda);
+                border-top-right-radius: var(--raio-borda);
+            }
+        }
+
+        .chat-display {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            scroll-behavior: smooth;
+            padding-bottom: 90px;
+        }
+
+        .message-bubble {
+            max-width: 85%;
+            padding: 12px 18px;
+            border-radius: var(--raio-borda);
+            line-height: 1.5;
+            word-wrap: break-word;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+        
+        .message-bubble img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        /* NOVO ESTILO PARA A GALERIA DE IMAGENS */
+        .image-gallery {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .image-gallery a {
+            display: block;
+        }
+        .image-gallery img {
+            width: 100%;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin: 0;
+            transition: transform 0.2s ease;
+        }
+        .image-gallery img:hover {
+            transform: scale(1.05);
+        }
+
+
+        .message-bubble.user {
+            align-self: flex-end;
+            background-color: var(--cor-bolha-usuario);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message-bubble.bot {
+            align-self: flex-start;
+            background-color: var(--cor-bolha-bot);
+            color: white;
+            border-bottom-left-radius: 5px;
+        }
+        
+        .message-bubble table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            margin-bottom: 10px;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .message-bubble th, .message-bubble td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--cor-borda-tabela);
+        }
+        .message-bubble th {
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+        .message-bubble tr:last-child td {
+            border-bottom: none;
+        }
+        .message-bubble pre {
+            background-color: rgba(0, 0, 0, 0.4);
+            padding: 10px;
+            padding-top: 35px;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin-top: 10px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9em;
+            position: relative;
+        }
+        .message-bubble code { color: #b3e5fc; }
+        .code-header {
+            position: absolute; top: 0; left: 0; right: 0;
+            background-color: rgba(0, 0, 0, 0.6);
+            color: var(--cor-texto); padding: 5px 10px;
+            border-top-left-radius: 8px; border-top-right-radius: 8px;
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 0.8em; font-weight: bold;
+        }
+        .copy-button {
+            background-color: #555; color: white; border: none; padding: 5px 10px;
+            border-radius: 5px; cursor: pointer; font-size: 0.75em;
+            transition: background-color 0.2s ease;
+            display: flex; align-items: center; gap: 5px;
+        }
+        .copy-button:hover { background-color: #777; }
+        .copy-button svg { width: 14px; height: 14px; fill: white; }
+        .message-bubble ul, .message-bubble ol { padding-left: 25px; margin-top: 10px; }
+        .message-bubble li { margin-bottom: 5px; }
+
+
+        .typing-indicator {
+            align-self: flex-start; background-color: var(--cor-bolha-bot);
+            padding: 12px 18px; border-radius: var(--raio-borda);
+            border-bottom-left-radius: 5px; display: flex; gap: 5px;
+            opacity: 0; transition: opacity 0.3s ease;
+        }
+        .typing-indicator.visible { opacity: 1; }
+        .typing-indicator span {
+            width: 8px; height: 8px; background-color: white; border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-7px); } }
+
+        .chat-input {
+            display: flex; padding: 10px; background-color: var(--cor-fundo-input);
+            border-top: 1px solid #444; position: absolute;
+            bottom: 0; left: 0; right: 0; align-items: flex-end;
+        }
+         @media (min-width: 601px) {
+            .chat-input {
+                border-bottom-left-radius: var(--raio-borda);
+                border-bottom-right-radius: var(--raio-borda);
+            }
+        }
+        
+        .chat-input textarea {
+            flex-grow: 1; padding: 12px 15px; border: none;
+            border-radius: 20px; background-color: #4a4a6e;
+            color: var(--cor-texto); font-size: 1em; font-family: var(--fonte-principal);
+            outline: none; transition: background-color 0.3s ease;
+            resize: none; overflow-y: hidden; max-height: 150px;
+            line-height: 1.4; margin: 0 10px;
+        }
+        .chat-input textarea::placeholder { color: #b0b0b0; }
+
+        .chat-input button {
+            background-color: var(--cor-bolha-usuario); color: white; border: none;
+            border-radius: 50%; padding: 10px; font-size: 1em; cursor: pointer;
+            transition: background-color 0.3s ease;
+            width: 44px; height: 44px; display: flex;
+            align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .chat-input button:hover { background-color: #45a049; }
+        
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">N.E.O Chat</div>
+        <div class="chat-display" id="chatDisplay">
+            <div class="message-bubble bot">Olá! Sou o N.E.O. Você pode conversar, pedir uma pesquisa (ex: "pesquise sobre o Brasil") ou buscar imagens (ex: "imagens de praias").</div>
+            <div class="typing-indicator" id="typingIndicator">
+                <span></span><span></span><span></span>
+            </div>
+        </div>
+        <div class="chat-input">
+             <textarea id="textInput" placeholder="Pergunte ou pesquise algo..." rows="1"></textarea>
+            <button id="sendButton" title="Enviar Mensagem">
+                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const GEMINI_API_KEY = 'AIzaSyC_j9sUQj49i8jOGz6ANO957wJesFH0AbM';
+        const SERPAPI_KEY = '0aa9ba68e28a15ace0fadf7884b49a176d4306e8afcf50978a2e7fa464fe5635';
+
+        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+        const SERPAPI_URL = 'https://serpapi.com/search.json';
+
+        const chatDisplay = document.getElementById('chatDisplay');
+        const textInput = document.getElementById('textInput');
+        const sendButton = document.getElementById('sendButton');
+        const typingIndicator = document.getElementById('typingIndicator');
+        
+        let historicoConversa = [];
+
+        const renderer = new marked.Renderer();
+        // ABRIR LINKS EM NOVA ABA
+        renderer.link = function (href, title, text) {
+            return `<a target="_blank" href="${href}" title="${title || ''}">${text}</a>`;
+        };
+        // CRIA A GALERIA DE IMAGENS
+        renderer.image = function(href, title, text) {
+            // Se for uma galeria, o 'text' terá um marcador especial
+            if (text === 'gallery-image') {
+                const originalUrl = title || href; // Usa o 'title' para a imagem original, se disponível
+                return `<a href="${originalUrl}" target="_blank" title="Clique para ver a imagem completa"><img src="${href}" alt="Imagem da galeria"></a>`;
+            }
+            return `<img src="${href}" alt="${text}" title="${title || ''}">`;
+        };
+
+        marked.use({ renderer });
+        marked.setOptions({ breaks: true, gfm: true });
+
+        window.copyCode = function(button) {
+            const codeToCopy = button.closest('pre').querySelector('code').innerText;
+            navigator.clipboard.writeText(codeToCopy).then(() => {
+                button.innerHTML = `Copiado!`;
+                button.style.backgroundColor = '#28a745';
+                setTimeout(() => {
+                    button.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="16" height="16"><path fill="white" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> Copiar`;
+                    button.style.backgroundColor = '#555';
+                }, 2000);
+            });
+        };
+
+        function adicionarMensagem(texto, remetente) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message-bubble', remetente);
+
+            if (remetente === 'bot') {
+                 messageDiv.innerHTML = marked.parse(texto);
+            } else {
+                const textContentSpan = document.createElement('span');
+                textContentSpan.textContent = texto;
+                textContentSpan.innerHTML = textContentSpan.innerHTML.replace(/\n/g, '<br>');
+                messageDiv.appendChild(textContentSpan);
+            }
+            
+            chatDisplay.insertBefore(messageDiv, typingIndicator);
+            // Transforma os resultados de imagem em uma galeria
+            const galleryContainer = messageDiv.querySelector('.image-gallery-container');
+            if (galleryContainer) {
+                const images = Array.from(galleryContainer.children);
+                const galleryDiv = document.createElement('div');
+                galleryDiv.className = 'image-gallery';
+                images.forEach(img => galleryDiv.appendChild(img));
+                galleryContainer.replaceWith(galleryDiv);
+            }
+
+            chatDisplay.scrollTop = chatDisplay.scrollHeight;
+        }
+
+        function mostrarIndicadorDigitando() {
+            typingIndicator.classList.add('visible');
+            chatDisplay.scrollTop = chatDisplay.scrollHeight;
+        }
+
+        function esconderIndicadorDigitando() {
+            typingIndicator.classList.remove('visible');
+        }
+        
+        async function enviarMensagem() {
+            const mensagemUsuario = textInput.value.trim();
+            if (mensagemUsuario === '') return;
+
+            adicionarMensagem(mensagemUsuario, 'user');
+            textInput.value = '';
+            textInput.style.height = 'auto';
+
+            await processarEnvio(mensagemUsuario);
+        }
+
+        // --- ROTEADOR DE COMANDOS MELHORADO ---
+        async function processarEnvio(mensagemTexto) {
+            mostrarIndicadorDigitando();
+            
+            const textoLower = mensagemTexto.toLowerCase();
+            const comandosPesquisa = ["pesquise sobre", "pesquise", "busque por", "procure por"];
+            const comandosImagem = ["imagens de", "mostre imagens de", "fotos de", "imagem de"];
+
+            let comandoImagemEncontrado = comandosImagem.find(cmd => textoLower.startsWith(cmd + " "));
+            if (comandoImagemEncontrado) {
+                const termo = mensagemTexto.substring(comandoImagemEncontrado.length + 1).trim();
+                await executarPesquisa(termo, 'images'); // Novo parâmetro de tipo
+                esconderIndicadorDigitando();
+                return;
+            }
+
+            let comandoPesquisaEncontrado = comandosPesquisa.find(cmd => textoLower.startsWith(cmd + " "));
+            if (comandoPesquisaEncontrado) {
+                const termo = mensagemTexto.substring(comandoPesquisaEncontrado.length + 1).trim();
+                await executarPesquisa(termo, 'web'); // Novo parâmetro de tipo
+                esconderIndicadorDigitando();
+                return;
+            }
+
+            // Se não for nenhum comando de pesquisa, usa o Gemini
+            await executarChatGemini(mensagemTexto);
+            esconderIndicadorDigitando();
+        }
+
+        async function executarChatGemini(mensagemTexto) {
+            // (Esta função permanece inalterada)
+            historicoConversa.push({ role: "user", parts: [{ text: mensagemTexto }] });
+            try {
+                const response = await fetch(GEMINI_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: historicoConversa })
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error?.message || `Erro HTTP: ${response.status}`);
+                }
+                const data = await response.json();
+                let respostaBot = "Não obtive uma resposta. Tente novamente.";
+                if (data.candidates && data.candidates[0]?.content.parts[0]) {
+                    respostaBot = data.candidates[0].content.parts[0].text;
+                }
+                adicionarMensagem(respostaBot, 'bot');
+                historicoConversa.push({ role: "model", parts: [{ text: respostaBot }] });
+            } catch (error) {
+                console.error("Erro na API Gemini:", error);
+                adicionarMensagem(`Desculpe, ocorreu um erro ao contatar o Gemini: ${error.message}`, 'bot');
+            }
+        }
+        
+        // --- FUNÇÃO DE PESQUISA UNIFICADA ---
+        async function executarPesquisa(termo, tipo) {
+             const PROXY_URL = 'https://api.allorigins.win/raw?url=';
+             const params = new URLSearchParams({
+                q: termo,
+                api_key: SERPAPI_KEY,
+                engine: 'google',
+                gl: 'br',
+                hl: 'pt'
+            });
+            const serpApiFullUrl = `${SERPAPI_URL}?${params.toString()}`;
+            const requestUrl = `${PROXY_URL}${encodeURIComponent(serpApiFullUrl)}`;
+
+            try {
+                const response = await fetch(requestUrl);
+                if (!response.ok) {
+                     throw new Error(`O serviço intermediário (proxy) falhou. Status: ${response.status}.`);
+                }
+                const json = await response.json();
+                
+                if (json.error) { throw new Error(json.error); }
+                
+                let resultadoFormatado;
+                if (tipo === 'images') {
+                    resultadoFormatado = formatarResultadosDeImagem(json, termo);
+                } else {
+                    resultadoFormatado = formatarResultadosDeTexto(json, termo);
+                }
+                adicionarMensagem(resultadoFormatado, 'bot');
+
+            } catch(error) {
+                console.error("Erro na API SerpApi:", error);
+                adicionarMensagem(`Desculpe, ocorreu um erro na pesquisa. **Detalhe:** ${error.message}`, 'bot');
+            }
+        }
+
+        // --- NOVA FUNÇÃO PARA FORMATAR IMAGENS ---
+        function formatarResultadosDeImagem(json, termo) {
+            let resultado = `### Imagens de "${termo}"\n\n`;
+
+            if (json.images_results && json.images_results.length > 0) {
+                 let imageMarkdown = '';
+                 const maxImages = Math.min(json.images_results.length, 6); // Pega até 6 imagens
+                 for(let i = 0; i < maxImages; i++) {
+                     const img = json.images_results[i];
+                     // Usamos a thumbnail para a exibição e o link original no 'title'
+                     imageMarkdown += `![gallery-image](${img.thumbnail || img.original}, "${img.original}")\n`;
+                 }
+                 // Envolvemos as imagens em um container para aplicar o estilo de galeria
+                 return resultado + `<div class="image-gallery-container">${imageMarkdown}</div>`;
+            } else {
+                 return resultado + `Não encontrei imagens para sua pesquisa.`;
+            }
+        }
+        
+        // --- Função de formatação de texto (antiga formatarResultadosSerpApi) ---
+        function formatarResultadosDeTexto(json, termoPesquisa) {
+            let resultado = `### Resultados da pesquisa por "${termoPesquisa}"\n\n`;
+
+            if (json.knowledge_graph) {
+                const kg = json.knowledge_graph;
+                resultado += `## ${kg.title || ''}\n`;
+                if(kg.header_images && kg.header_images[0]?.image) {
+                     resultado += `![${kg.title || 'Imagem'}](${kg.header_images[0].image})\n`;
+                }
+                resultado += `**${kg.description || ''}**\n\n`;
+                if(kg.source && kg.source.name && kg.source.link) {
+                     resultado += `Fonte: [${kg.source.name}](${kg.source.link})\n\n`;
+                }
+                resultado += `***\n`;
+            }
+
+            if (json.organic_results && json.organic_results.length > 0) {
+                 resultado += `#### Principais Links:\n\n`;
+                 const maxResults = Math.min(json.organic_results.length, 3);
+                 for(let i = 0; i < maxResults; i++) {
+                     const res = json.organic_results[i];
+                     resultado += `**[${res.title}](${res.link})**\n`;
+                     resultado += `*${res.snippet || 'Sem descrição disponível.'}*\n\n`;
+                 }
+                 resultado += `***\n`;
+            } else {
+                 resultado += `Não encontrei resultados diretos para sua pesquisa.\n`;
+            }
+            
+            if (json.related_questions && json.related_questions.length > 0) {
+                resultado += `#### As pessoas também perguntam:\n\n`;
+                json.related_questions.slice(0, 3).forEach(q => {
+                    resultado += `- ${q.question}\n`;
+                });
+            }
+
+            return resultado;
+        }
+
+        sendButton.addEventListener('click', enviarMensagem);
+
+        textInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                enviarMensagem();
+            }
+        });
+
+        textInput.addEventListener('input', () => {
+            textInput.style.height = 'auto';
+            textInput.style.height = (textInput.scrollHeight) + 'px';
+        });
+
+        esconderIndicadorDigitando();
+    </script>
+</body>
+</html>
